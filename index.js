@@ -26,11 +26,29 @@ io.on('connection', function(socket){
         sendPlayerList(room, socket.id)
     })
 
-    socket.on('disconnect', function () {
-        setTimeout(function () {
-             //do something
-        }, 5000);
-    });
+    socket.on('shufflecards', function (shuffleObj) {
+        // verify that user is admin
+        let curUser = gameStatus[shuffleObj.room].find(p => (p.id === socket.id))
+        if (curUser.admin) {
+            let cardList = []
+            // construct card list
+            Object.keys(shuffleObj.cards).forEach(type => {
+                for (let i=0; i < Number(shuffleObj.cards[type]); i++) {
+                    cardList.push(type)
+                }
+            })
+            // shuffle card list
+            shuffle(cardList)
+            console.log(cardList)
+            
+            // assign cards to players
+            for (let i=0; i < cardList.length; i++) {
+                gameStatus[shuffleObj.room][i].card = cardList[i]
+                io.to(gameStatus[shuffleObj.room][i].id).emit('cardassigned', cardList[i])
+            }
+            console.log(gameStatus[shuffleObj.room])
+        }
+    })
 });
 
 function sendPlayerList (room, id) {
@@ -42,6 +60,19 @@ function sendPlayerList (room, id) {
         })
     }
     io.to(target).emit('playerlist', playerList)
+}
+
+/**
+ * Shuffles array in place. ES6 version
+ * @param {Array} a items An array containing the items.
+ * https://stackoverflow.com/questions/6274339/how-can-i-shuffle-an-array
+ */
+function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
 }
 
 function updateGameStatus (player) {
@@ -66,10 +97,13 @@ function updateGameStatus (player) {
             gameStatus[player.room].push(player)
         }
     } else {
+        // first player in the room becomes admin
+        player.admin = true
         gameStatus[player.room] = [player]
+        io.to(player.id).emit('youareadmin');
     }
 }
 
 http.listen(3000, function(){
-    console.log('listening on *:3000');
+    console.log('listening on *:3000 2');
 });
