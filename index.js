@@ -26,6 +26,44 @@ io.on('connection', function(socket){
         sendPlayerList(room, socket.id)
     })
 
+    socket.on('updateorder', orderobj => {
+        // verify that user is admin
+        let curUser = gameStatus[orderobj.room].find(p => (p.id === socket.id))
+        if (curUser.admin) {
+            let updUser = gameStatus[orderobj.room].find(p => (p.name === orderobj.player))
+            updUser.order = orderobj.order
+            let updObj = {
+                name: updUser.name,
+                order: updUser.order
+            }
+            io.to(orderobj.room).emit('orderchanged', updObj)
+            sendPlayerList(orderobj.room)
+        }
+    })
+
+    socket.on('shuffleorder', room => {
+        // verify that user is admin
+        let curUser = gameStatus[room].find(p => (p.id === socket.id))
+        if (curUser.admin) {
+            let orderList = []
+            // construct order list
+            gameStatus[room].forEach(player => {
+                orderList.push(player.order)
+            })
+            // shuffle order list
+            shuffle(orderList)
+            console.log('shuffled order list, new list = ' + orderList)
+            
+            // assign new orders to players
+            for (let i=0; i < orderList.length; i++) {
+                gameStatus[room][i].order = orderList[i]
+            }
+            io.to(room).emit('ordershuffled')
+            sendPlayerList(room)
+            console.log(gameStatus[room])
+        }
+    })
+
     socket.on('shufflecards', function (shuffleObj) {
         // verify that user is admin
         let curUser = gameStatus[shuffleObj.room].find(p => (p.id === socket.id))
@@ -56,7 +94,11 @@ function sendPlayerList (room, id) {
     let playerList = []
     if (gameStatus[room]) {
         gameStatus[room].forEach(p => {
-            playerList.push(p.name)
+            let pObj = {
+                name: p.name,
+                order: p.order
+            }
+            playerList.push(pObj)
         })
     }
     io.to(target).emit('playerlist', playerList)
@@ -94,11 +136,29 @@ function updateGameStatus (player) {
         }
         // only append if this name is not in the room yet
         if (proceed && !gameStatus[player.room].find(p => (p.name === player.name))) {
+            // compute player order - next available
+            let order = 1
+            let orderResolved = -1
+            for (let i=0; i < gameStatus[player.room].length + 1 && orderResolved < 0; i++) {
+                let orderPresent = false
+                gameStatus[player.room].forEach(pl => {
+                    if (pl.order === order) {
+                        orderPresent = true
+                    }
+                })
+                if (!orderPresent) {
+                    orderResolved = order
+                } else {
+                    order++
+                }
+            }
+            player.order = order
             gameStatus[player.room].push(player)
         }
     } else {
         // first player in the room becomes admin
         player.admin = true
+        player.order = 1
         gameStatus[player.room] = [player]
         io.to(player.id).emit('youareadmin');
     }
