@@ -17,6 +17,7 @@ io.on('connection', function(socket){
         data.id = socket.id
         updateGameStatus(data, socket)
         sendPlayerList(data.room)
+        
         // console.log(gameStatus)
     });
 
@@ -83,6 +84,14 @@ io.on('connection', function(socket){
         }
     })
 
+    socket.on('requestmyplayer', requestobj => {
+        let sendObj = {}
+        if (gameStatus[requestobj.room]) {
+            sendObj = gameStatus[requestobj.room].find(p => (p.uuid === requestobj.uuid))
+        }
+        io.to(socket.id).emit('yourplayer', sendObj)
+    })
+
     socket.on('shufflecards', function (shuffleObj) {
         // verify that user is admin
         let curUser = gameStatus[shuffleObj.room].find(p => (p.id === socket.id))
@@ -115,8 +124,7 @@ function sendPlayerList (room, id) {
         gameStatus[room].forEach(p => {
             let pObj = {
                 name: p.name,
-                order: p.order,
-                uuid: p.uuid
+                order: p.order
             }
             playerList.push(pObj)
         })
