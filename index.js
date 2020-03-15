@@ -115,7 +115,8 @@ function sendPlayerList (room, id) {
         gameStatus[room].forEach(p => {
             let pObj = {
                 name: p.name,
-                order: p.order
+                order: p.order,
+                uuid: p.uuid
             }
             playerList.push(pObj)
         })
