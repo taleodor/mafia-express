@@ -12,18 +12,27 @@ io.on('connection', function(socket){
     console.log('a user connected');
 
     socket.on('joinroom', function (data) {
-        console.log(data)
-        console.log(data.name + ' joined room ' + data.room)
+        console.log(data.name + ', uuid = ' + data.uuid + ' joined room ' + data.room)
         socket.join(data.room)
         socket.to(data.room).emit('joinedroom', data.name)
         data.id = socket.id
         updateGameStatus(data)
         sendPlayerList(data.room)
-        console.log(gameStatus)
+        // console.log(gameStatus)
     });
 
-    socket.on('requestroom', function (room) {
-        sendPlayerList(room, socket.id)
+    socket.on('requestroom', function (roomobj) {
+        // if this uuid is in the list, update id with current player
+        if (gameStatus[roomobj.room]) {
+            let curUser = gameStatus[roomobj.room].find(p => (p.uuid === roomobj.uuid))
+            if (curUser) {
+                curUser.id = socket.id
+                if (curUser.admin) {
+                    io.to(curUser.id).emit('youareadmin')
+                }
+            }
+        }
+        sendPlayerList(roomobj.room, socket.id)
     })
 
     socket.on('updateorder', orderobj => {
