@@ -21,6 +21,16 @@ io.on('connection', function(socket){
         // console.log(gameStatus)
     });
 
+    socket.on('kickplayer', kickobj => {
+        // verify that user is admin
+        let curUser = gameStatus[kickobj.room].find(p => (p.id === socket.id))
+        if (curUser.admin) {
+            gameStatus[kickobj.room] = gameStatus[kickobj.room].filter(p => (p.name !== kickobj.name))
+            sendPlayerList(kickobj.room)
+            socket.to(kickobj.room).emit('adminmsg', 'player ' + kickobj.name + ' has been removed by Game Master!')
+        }
+    })
+
     socket.on('requestroom', function (roomobj) {
         // if this uuid is in the list, update id with current player
         if (gameStatus[roomobj.room]) {
