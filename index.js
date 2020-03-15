@@ -14,9 +14,8 @@ io.on('connection', function(socket){
     socket.on('joinroom', function (data) {
         console.log(data.name + ', uuid = ' + data.uuid + ' joined room ' + data.room)
         socket.join(data.room)
-        socket.to(data.room).emit('joinedroom', data.name)
         data.id = socket.id
-        updateGameStatus(data)
+        updateGameStatus(data, socket)
         sendPlayerList(data.room)
         // console.log(gameStatus)
     });
@@ -137,7 +136,7 @@ function shuffle(a) {
     return a;
 }
 
-function updateGameStatus (player) {
+function updateGameStatus (player, socket) {
     if (gameStatus[player.room]) {
         let proceed = true
         let existingPlayer = gameStatus[player.room].find(p => (p.name === player.name))
@@ -149,10 +148,13 @@ function updateGameStatus (player) {
             proceed = false
         }
 
+        // if id matches, simply rename the player
         let sameIdPlayer = gameStatus[player.room].find(p => (p.id === player.id))
         if (proceed && sameIdPlayer && sameIdPlayer.id === player.id && sameIdPlayer.name !== player.name) {
+            let oldPlayerName = sameIdPlayer.name
             sameIdPlayer.name = player.name
             proceed = false
+            io.to(player.room).emit('adminmsg', oldPlayerName + ' renamed themselves to ' + player.name)
         }
         // only append if this name is not in the room yet
         if (proceed && !gameStatus[player.room].find(p => (p.name === player.name))) {
@@ -174,6 +176,7 @@ function updateGameStatus (player) {
             }
             player.order = order
             gameStatus[player.room].push(player)
+            socket.to(player.room).emit('joinedroom', player.name)
         }
     } else {
         // first player in the room becomes admin
