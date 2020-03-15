@@ -27,7 +27,7 @@ io.on('connection', function(socket){
         if (curUser.admin) {
             gameStatus[kickobj.room] = gameStatus[kickobj.room].filter(p => (p.name !== kickobj.name))
             sendPlayerList(kickobj.room)
-            socket.to(kickobj.room).emit('adminmsg', 'player ' + kickobj.name + ' has been removed by Game Master!')
+            io.to(kickobj.room).emit('adminmsg', 'player ' + kickobj.name + ' has been removed by Game Master!')
         }
     })
 
@@ -36,6 +36,7 @@ io.on('connection', function(socket){
         if (gameStatus[roomobj.room]) {
             let curUser = gameStatus[roomobj.room].find(p => (p.uuid === roomobj.uuid))
             if (curUser) {
+                socket.join(roomobj.room)
                 curUser.id = socket.id
                 if (curUser.admin) {
                     io.to(curUser.id).emit('youareadmin')
