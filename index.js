@@ -2,7 +2,7 @@ var app = require('express')();
 var http = require('http').createServer(app);
 var io  = require('socket.io')(http, { path: '/api'});
 
-var gameStatus = {}  // room -> players -> name, role, seat
+var gameStatus = {}  // room -> [cardShuffleSequence, players -> name, role, seat]
 
 app.get('/api', function(req, res){
     res.send('<h1>Hello world</h1>');
@@ -23,9 +23,9 @@ io.on('connection', function(socket){
 
     socket.on('kickplayer', kickobj => {
         // verify that user is admin
-        let curUser = gameStatus[kickobj.room].find(p => (p.id === socket.id))
+        let curUser = gameStatus[kickobj.room].playerList.find(p => (p.id === socket.id))
         if (curUser.admin) {
-            gameStatus[kickobj.room] = gameStatus[kickobj.room].filter(p => (p.name !== kickobj.name))
+            gameStatus[kickobj.room].playerList = gameStatus[kickobj.room].playerList.filter(p => (p.name !== kickobj.name))
             sendPlayerList(kickobj.room)
             io.to(kickobj.room).emit('adminmsg', 'player ' + kickobj.name + ' has been removed by Game Master!')
         }
@@ -34,7 +34,7 @@ io.on('connection', function(socket){
     socket.on('requestroom', function (roomobj) {
         // if this uuid is in the list, update id with current player
         if (gameStatus[roomobj.room]) {
-            let curUser = gameStatus[roomobj.room].find(p => (p.uuid === roomobj.uuid))
+            let curUser = gameStatus[roomobj.room].playerList.find(p => (p.uuid === roomobj.uuid))
             if (curUser) {
                 socket.join(roomobj.room)
                 curUser.id = socket.id
@@ -48,9 +48,9 @@ io.on('connection', function(socket){
 
     socket.on('updateorder', orderobj => {
         // verify that user is admin
-        let curUser = gameStatus[orderobj.room].find(p => (p.id === socket.id))
+        let curUser = gameStatus[orderobj.room].playerList.find(p => (p.id === socket.id))
         if (curUser.admin) {
-            let updUser = gameStatus[orderobj.room].find(p => (p.name === orderobj.player))
+            let updUser = gameStatus[orderobj.room].playerList.find(p => (p.name === orderobj.player))
             updUser.order = orderobj.order
             let updObj = {
                 name: updUser.name,
@@ -63,11 +63,11 @@ io.on('connection', function(socket){
 
     socket.on('shuffleorder', room => {
         // verify that user is admin
-        let curUser = gameStatus[room].find(p => (p.id === socket.id))
+        let curUser = gameStatus[room].playerList.find(p => (p.id === socket.id))
         if (curUser.admin) {
             let orderList = []
             // construct order list
-            gameStatus[room].forEach(player => {
+            gameStatus[room].playerList.forEach(player => {
                 orderList.push(player.order)
             })
             // shuffle order list
@@ -76,7 +76,7 @@ io.on('connection', function(socket){
             
             // assign new orders to players
             for (let i=0; i < orderList.length; i++) {
-                gameStatus[room][i].order = orderList[i]
+                gameStatus[room].playerList[i].order = orderList[i]
             }
             io.to(room).emit('ordershuffled')
             sendPlayerList(room)
@@ -87,14 +87,17 @@ io.on('connection', function(socket){
     socket.on('requestmyplayer', requestobj => {
         let sendObj = {}
         if (gameStatus[requestobj.room]) {
-            sendObj = gameStatus[requestobj.room].find(p => (p.uuid === requestobj.uuid))
+            sendObj = gameStatus[requestobj.room].playerList.find(p => (p.uuid === requestobj.uuid))
+            if (sendObj) {
+                sendObj.game = gameStatus[requestobj.room].cardShuffleSequence
+            }
         }
         io.to(socket.id).emit('yourplayer', sendObj)
     })
 
     socket.on('shufflecards', function (shuffleObj) {
         // verify that user is admin
-        let curUser = gameStatus[shuffleObj.room].find(p => (p.id === socket.id))
+        let curUser = gameStatus[shuffleObj.room].playerList.find(p => (p.id === socket.id))
         if (curUser.admin) {
             let cardList = []
             // construct card list
@@ -106,11 +109,14 @@ io.on('connection', function(socket){
             // shuffle card list
             shuffle(cardList)
             console.log(cardList)
-            
+
+            // increment shffle sequence
+            gameStatus[shuffleObj.room].cardShuffleSequence += 1
+
             // assign cards to players
             for (let i=0; i < cardList.length; i++) {
-                gameStatus[shuffleObj.room][i].card = cardList[i]
-                io.to(gameStatus[shuffleObj.room][i].id).emit('cardassigned', cardList[i])
+                gameStatus[shuffleObj.room].playerList[i].card = cardList[i]
+                io.to(gameStatus[shuffleObj.room].playerList[i].id).emit('cardassigned', cardList[i])
             }
             console.log(gameStatus[shuffleObj.room])
         }
@@ -121,7 +127,7 @@ function sendPlayerList (room, id) {
     let target = id ? id : room
     let playerList = []
     if (gameStatus[room]) {
-        gameStatus[room].forEach(p => {
+        gameStatus[room].playerList.forEach(p => {
             let pObj = {
                 name: p.name,
                 order: p.order
@@ -148,7 +154,7 @@ function shuffle(a) {
 function updateGameStatus (player, socket) {
     if (gameStatus[player.room]) {
         let proceed = true
-        let existingPlayer = gameStatus[player.room].find(p => (p.name === player.name))
+        let existingPlayer = gameStatus[player.room].playerList.find(p => (p.name === player.name))
         // if name matches but id doesn't match, infom player that id is taken
         // if id matches, and player name matches, don't do anything
         // if id matches but player name is different update name
@@ -158,7 +164,7 @@ function updateGameStatus (player, socket) {
         }
 
         // if id matches, simply rename the player
-        let sameIdPlayer = gameStatus[player.room].find(p => (p.id === player.id))
+        let sameIdPlayer = gameStatus[player.room].playerList.find(p => (p.id === player.id))
         if (proceed && sameIdPlayer && sameIdPlayer.id === player.id && sameIdPlayer.name !== player.name) {
             let oldPlayerName = sameIdPlayer.name
             sameIdPlayer.name = player.name
@@ -166,13 +172,13 @@ function updateGameStatus (player, socket) {
             io.to(player.room).emit('adminmsg', oldPlayerName + ' renamed themselves to ' + player.name)
         }
         // only append if this name is not in the room yet
-        if (proceed && !gameStatus[player.room].find(p => (p.name === player.name))) {
+        if (proceed && !gameStatus[player.room].playerList.find(p => (p.name === player.name))) {
             // compute player order - next available
             let order = 1
             let orderResolved = -1
-            for (let i=0; i < gameStatus[player.room].length + 1 && orderResolved < 0; i++) {
+            for (let i=0; i < gameStatus[player.room].playerList.length + 1 && orderResolved < 0; i++) {
                 let orderPresent = false
-                gameStatus[player.room].forEach(pl => {
+                gameStatus[player.room].playerList.forEach(pl => {
                     if (pl.order === order) {
                         orderPresent = true
                     }
@@ -184,14 +190,17 @@ function updateGameStatus (player, socket) {
                 }
             }
             player.order = order
-            gameStatus[player.room].push(player)
+            gameStatus[player.room].playerList.push(player)
             socket.to(player.room).emit('joinedroom', player.name)
         }
     } else {
         // first player in the room becomes admin
         player.admin = true
         player.order = 1
-        gameStatus[player.room] = [player]
+        gameStatus[player.room] = {
+            cardShuffleSequence: 0,
+            playerList: [player]
+        }
         io.to(player.id).emit('youareadmin');
     }
 }
