@@ -64,7 +64,7 @@ io.on('connection', function(socket){
     socket.on('shuffleorder', room => {
         // verify that user is admin
         let curUser = gameStatus[room].playerList.find(p => (p.id === socket.id))
-        if (curUser.admin) {
+        if (curUser && curUser.admin) {
             let orderList = []
             // construct order list
             gameStatus[room].playerList.forEach(player => {
@@ -81,6 +81,8 @@ io.on('connection', function(socket){
             io.to(room).emit('ordershuffled')
             sendPlayerList(room)
             console.log(gameStatus[room])
+        } else {
+            io.to(room).emit('adminmsg', 'There is a server side error with this room, please create another one!')
         }
     })
 
