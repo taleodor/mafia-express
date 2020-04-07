@@ -82,7 +82,7 @@ io.on('connection', function(socket){
             sendPlayerList(room)
             console.log(gameStatus[room])
         } else {
-            io.to(room).emit('adminmsg', 'There is a server side error with this room, please create another one!')
+            io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
         }
     })
 
@@ -100,7 +100,7 @@ io.on('connection', function(socket){
     socket.on('shufflecards', function (shuffleObj) {
         // verify that user is admin
         let curUser = gameStatus[shuffleObj.room].playerList.find(p => (p.id === socket.id))
-        if (curUser.admin) {
+        if (curUser && curUser.admin) {
             let cardList = []
             // construct card list
             Object.keys(shuffleObj.cards).forEach(type => {
@@ -121,6 +121,8 @@ io.on('connection', function(socket){
                 io.to(gameStatus[shuffleObj.room].playerList[i].id).emit('cardassigned', cardList[i])
             }
             console.log(gameStatus[shuffleObj.room])
+        } else {
+            io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
         }
     })
 });
