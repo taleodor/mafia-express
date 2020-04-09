@@ -40,11 +40,13 @@ io.on('connection', function(socket){
     socket.on('kickplayer', kickobj => {
         // verify that user is admin
         let curUser = gameStatus[kickobj.room].playerList.find(p => (p.id === socket.id))
-        if (curUser.admin) {
+        if (curUser && curUser.admin) {
             gameStatus[kickobj.room].playerList = gameStatus[kickobj.room].playerList.filter(p => (p.name !== kickobj.name))
             saveGameStatusOnRedis()
             sendPlayerList(kickobj.room)
             io.to(kickobj.room).emit('adminmsg', 'player ' + kickobj.name + ' has been removed by Game Master!')
+        } else {
+            io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
         }
     })
 
@@ -66,7 +68,7 @@ io.on('connection', function(socket){
     socket.on('updateorder', orderobj => {
         // verify that user is admin
         let curUser = gameStatus[orderobj.room].playerList.find(p => (p.id === socket.id))
-        if (curUser.admin) {
+        if (curUser && curUser.admin) {
             let updUser = gameStatus[orderobj.room].playerList.find(p => (p.name === orderobj.player))
             updUser.order = orderobj.order
             let updObj = {
@@ -75,6 +77,8 @@ io.on('connection', function(socket){
             }
             io.to(orderobj.room).emit('orderchanged', updObj)
             sendPlayerList(orderobj.room)
+        } else {
+            io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
         }
     })
 
