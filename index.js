@@ -4,7 +4,7 @@ const io  = require('socket.io')(http, { path: '/api'});
 const redis = require('redis');
 const redisClient = redis.createClient( 
     {
-        host: '127.0.0.1',
+        host: process.env.REDIS_HOST ? process.env.REDIS_HOST : '127.0.0.1',
         port: 6379
     }
 );
