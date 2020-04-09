@@ -11,7 +11,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Login to Docker Registry
-    run: echo ${{ secrets.docker_token }} | docker login -u ${{ secrets.docker_login }} --password-stdin
+      run: echo ${{ secrets.docker_token }} | docker login -u ${{ secrets.docker_login }} --password-stdin
     - name: Build, push image, generate version and stream version to Reliza Hub
     env:
       IMAGE_NAMESPACE: taleodor
