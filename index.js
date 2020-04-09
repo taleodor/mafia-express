@@ -1,8 +1,24 @@
-var app = require('express')();
-var http = require('http').createServer(app);
-var io  = require('socket.io')(http, { path: '/api'});
+const app = require('express')();
+const http = require('http').createServer(app);
+const io  = require('socket.io')(http, { path: '/api'});
+const redis = require('redis');
+const redisClient = redis.createClient( 
+    {
+        host: '127.0.0.1',
+        port: 6379
+    }
+);
 
-var gameStatus = {}  // room -> [cardShuffleSequence, players -> name, role, seat]
+redisClient.on("error", function(error) {
+    console.error(error);
+});
+
+var gameStatus = {}
+redisClient.get('mafiaGameState', (err, reply) => {
+    if (!err && reply) {
+        gameStatus = JSON.parse(reply)
+    }
+})
 
 app.get('/api', function(req, res){
     res.send('<h1>Hello world</h1>');
@@ -26,6 +42,7 @@ io.on('connection', function(socket){
         let curUser = gameStatus[kickobj.room].playerList.find(p => (p.id === socket.id))
         if (curUser.admin) {
             gameStatus[kickobj.room].playerList = gameStatus[kickobj.room].playerList.filter(p => (p.name !== kickobj.name))
+            saveGameStatusOnRedis()
             sendPlayerList(kickobj.room)
             io.to(kickobj.room).emit('adminmsg', 'player ' + kickobj.name + ' has been removed by Game Master!')
         }
@@ -78,6 +95,7 @@ io.on('connection', function(socket){
             for (let i=0; i < orderList.length; i++) {
                 gameStatus[room].playerList[i].order = orderList[i]
             }
+            saveGameStatusOnRedis()
             io.to(room).emit('ordershuffled')
             sendPlayerList(room)
             console.log(gameStatus[room])
@@ -120,6 +138,7 @@ io.on('connection', function(socket){
                 gameStatus[shuffleObj.room].playerList[i].card = cardList[i]
                 io.to(gameStatus[shuffleObj.room].playerList[i].id).emit('cardassigned', cardList[i])
             }
+            saveGameStatusOnRedis()
             console.log(gameStatus[shuffleObj.room])
         } else {
             io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
@@ -153,6 +172,10 @@ function shuffle(a) {
         [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
+}
+
+function saveGameStatusOnRedis () {
+    redisClient.set('mafiaGameState', JSON.stringify(gameStatus))
 }
 
 function updateGameStatus (player, socket) {
@@ -207,6 +230,7 @@ function updateGameStatus (player, socket) {
         }
         io.to(player.id).emit('youareadmin');
     }
+    saveGameStatusOnRedis()
 }
 
 http.listen(3000, function(){
