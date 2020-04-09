@@ -13,9 +13,9 @@ jobs:
     - name: Login to Docker Registry
       run: echo ${{ secrets.docker_token }} | docker login -u ${{ secrets.docker_login }} --password-stdin
     - name: Build, push image, generate version and stream version to Reliza Hub
-    env:
-      IMAGE_NAMESPACE: taleodor
-      IMAGE_NAME: mafia-express
+      env:
+        IMAGE_NAMESPACE: taleodor
+        IMAGE_NAME: mafia-express
       run: |
         # get version
         docker pull relizaio/reliza-go-client
