@@ -9,6 +9,9 @@ const redisClient = redis.createClient(
     }
 );
 
+// add timestamps in front of log messages
+require('console-stamp')(console, 'yyyy-mm-dd HH:MM:ss.l');
+
 redisClient.on("error", function(error) {
     console.error(error);
 });
