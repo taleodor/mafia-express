@@ -88,12 +88,11 @@ io.on('connection', function(socket){
     socket.on('shuffleorder', room => {
         // verify that user is admin
         let curUser = gameStatus[room].playerList.find(p => (p.id === socket.id))
-        if (curUser && curUser.admin) {
-            let orderList = []
-            // construct order list
-            gameStatus[room].playerList.forEach(player => {
-                orderList.push(player.order)
-            })
+        if (curUser && curUser.admin && gameStatus[room].playerList.length) {
+            // construct order list by the number of players
+            let orderList = [...Array(gameStatus[room].playerList.length).keys()]
+            orderList.shift()
+            orderList.push(gameStatus[room].playerList.length)
             // shuffle order list
             shuffle(orderList)
             console.log('shuffled order list, new list = ' + orderList)
