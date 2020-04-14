@@ -156,6 +156,23 @@ io.on('connection', function(socket){
         }
         io.to(socket.id).emit('yourplayer', sendObj)
     })
+    
+    socket.on('transferGameMaster', function (requestobj) {
+        // verify that user is admin
+        let curUser = gameStatus[requestobj.room].playerList.find(p => (p.id === socket.id))
+        if (curUser && curUser.admin) {
+            let newMaster = gameStatus[requestobj.room].playerList.find(p => (p.name === requestobj.name))
+            if (newMaster) {
+                newMaster.admin = true
+                curUser.admin = false
+                io.to(newMaster.id).emit('youareadmin')
+                io.to(requestobj.room).emit('adminmsg', 'Player ' + newMaster.name + ' has become Game Master!')
+                saveGameStatusOnRedis()
+            }
+        } else {
+            io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
+        }
+    })
 
     socket.on('shufflecards', function (shuffleObj) {
         // verify that user is admin
