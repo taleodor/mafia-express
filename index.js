@@ -156,6 +156,42 @@ io.on('connection', function(socket){
         }
         io.to(socket.id).emit('yourplayer', sendObj)
     })
+
+    socket.on('blinkTo', requestobj => {
+        if (gameStatus[requestobj.room]) {
+            let curUser = gameStatus[requestobj.room].playerList.find(p => (p.id === socket.id))
+            if (curUser && !curUser.blinkTo) {
+                curUser.blinkTo = requestobj.blinkTarget
+                let blinkTargetPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.blinkTarget))
+                if (!resolveBlinks(curUser, blinkTargetPlayer)) {
+                    io.to(socket.id).emit('adminmsg', 'You blinked to player ' + requestobj.blinkTarget)
+                }
+            } else if (curUser.blinkTo) {
+                io.to(socket.id).emit('adminmsg', 'You can only blink once per game!')
+            }
+        }
+    })
+
+    socket.on('listenTo', requestobj => {
+        if (gameStatus[requestobj.room]) {
+            let curUser = gameStatus[requestobj.room].playerList.find(p => (p.id === socket.id))
+            if (curUser && !curUser.listenTo) {
+                curUser.listenTo = [requestobj.listenTarget]
+                listenPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.listenTarget))
+                if (!resolveBlinks(listenPlayer, curUser)) {
+                    io.to(socket.id).emit('adminmsg', 'You are now listening to player ' + requestobj.listenTarget)
+                }
+            } else if (curUser && curUser.listenTo.length < 3) {
+                curUser.listenTo.push(requestobj.listenTarget)
+                listenPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.listenTarget))
+                if (!resolveBlinks(listenPlayer, curUser)) {
+                    io.to(socket.id).emit('adminmsg', 'You are now listening to player ' + requestobj.listenTarget)
+                }
+            } else if (curUser) {
+                io.to(socket.id).emit('adminmsg', 'You can listen to max 3 players per game!')
+            }
+        }
+    })
     
     socket.on('transferGameMaster', function (requestobj) {
         // verify that user is admin
@@ -193,9 +229,16 @@ io.on('connection', function(socket){
             gameStatus[shuffleObj.room].cardShuffleSequence += 1
 
             // assign cards to players
-            for (let i=0; i < cardList.length; i++) {
-                gameStatus[shuffleObj.room].playerList[i].card = cardList[i]
-                io.to(gameStatus[shuffleObj.room].playerList[i].id).emit('cardassigned', cardList[i])
+            for (let i=0, j=0; i < cardList.length && j < gameStatus[shuffleObj.room].playerList.length; i++, j++) {
+                while (j < gameStatus[shuffleObj.room].playerList.length && (gameStatus[shuffleObj.room].playerList[j].order === 'Guest'
+                || gameStatus[shuffleObj.room].playerList[j].order === 'Host')) {
+                    j++
+                }
+                gameStatus[shuffleObj.room].playerList[j].card = cardList[i]
+                gameStatus[shuffleObj.room].playerList[j].blinkTo = undefined
+                gameStatus[shuffleObj.room].playerList[j].listenTo = []
+                io.to(gameStatus[shuffleObj.room].playerList[j].id).emit('cardassigned', cardList[i])
+                io.to(shuffleObj.room).emit('gamenumber', gameStatus[shuffleObj.room].cardShuffleSequence)
             }
             saveGameStatusOnRedis()
             console.log(gameStatus[shuffleObj.room])
@@ -203,7 +246,17 @@ io.on('connection', function(socket){
             io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
         }
     })
-});
+})
+
+function resolveBlinks (whoBlinked, blinkTarget) {
+    let linked = false
+    if (whoBlinked.blinkTo === blinkTarget.order && blinkTarget.listenTo.includes(whoBlinked.order)) {
+        io.to(whoBlinked.id).emit('blinksuccess', blinkTarget.order)
+        io.to(blinkTarget.id).emit('listensuccess', whoBlinked.order)
+        linked = true
+    }
+    return linked
+}
 
 function sendPlayerList (room, id) {
     let target = id ? id : room
