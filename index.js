@@ -101,6 +101,10 @@ io.on('connection', function(socket){
             for (let i=0; i < orderList.length; i++) {
                 gameStatus[room].playerList[i].order = orderList[i]
             }
+            // sort playerList by order
+            gameStatus[room].playerList = gameStatus[room].playerList.sort((a,b) => {
+                return a.order - b.order
+            })
             saveGameStatusOnRedis()
             io.to(room).emit('ordershuffled')
             sendPlayerList(room)
