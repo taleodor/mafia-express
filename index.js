@@ -250,7 +250,7 @@ io.on('connection', function(socket){
 
 function resolveBlinks (whoBlinked, blinkTarget) {
     let linked = false
-    if (whoBlinked.blinkTo === blinkTarget.order && blinkTarget.listenTo.includes(whoBlinked.order)) {
+    if (whoBlinked.blinkTo === blinkTarget.order && blinkTarget.listenTo && blinkTarget.listenTo.includes(whoBlinked.order)) {
         io.to(whoBlinked.id).emit('blinksuccess', blinkTarget.order)
         io.to(blinkTarget.id).emit('listensuccess', whoBlinked.order)
         linked = true
