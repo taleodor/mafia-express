@@ -157,17 +157,17 @@ io.on('connection', function(socket){
         io.to(socket.id).emit('yourplayer', sendObj)
     })
 
-    socket.on('blinkTo', requestobj => {
+    socket.on('winkTo', requestobj => {
         if (gameStatus[requestobj.room]) {
             let curUser = gameStatus[requestobj.room].playerList.find(p => (p.id === socket.id))
-            if (curUser && !curUser.blinkTo) {
-                curUser.blinkTo = requestobj.blinkTarget
-                let blinkTargetPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.blinkTarget))
-                if (!resolveBlinks(curUser, blinkTargetPlayer)) {
-                    io.to(socket.id).emit('adminmsg', 'You blinked to player ' + requestobj.blinkTarget)
+            if (curUser && !curUser.winkTo) {
+                curUser.winkTo = requestobj.winkTarget
+                let winkTargetPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.winkTarget))
+                if (!resolveWinks(curUser, winkTargetPlayer)) {
+                    io.to(socket.id).emit('adminmsg', 'You winked to player ' + requestobj.winkTarget)
                 }
-            } else if (curUser.blinkTo) {
-                io.to(socket.id).emit('adminmsg', 'You can only blink once per game!')
+            } else if (curUser.winkTo) {
+                io.to(socket.id).emit('adminmsg', 'You can only wink once per game!')
             }
         }
     })
@@ -178,13 +178,13 @@ io.on('connection', function(socket){
             if (curUser && !curUser.listenTo) {
                 curUser.listenTo = [requestobj.listenTarget]
                 listenPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.listenTarget))
-                if (!resolveBlinks(listenPlayer, curUser)) {
+                if (!resolveWinks(listenPlayer, curUser)) {
                     io.to(socket.id).emit('adminmsg', 'You are now listening to player ' + requestobj.listenTarget)
                 }
             } else if (curUser && curUser.listenTo.length < 3) {
                 curUser.listenTo.push(requestobj.listenTarget)
                 listenPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.listenTarget))
-                if (!resolveBlinks(listenPlayer, curUser)) {
+                if (!resolveWinks(listenPlayer, curUser)) {
                     io.to(socket.id).emit('adminmsg', 'You are now listening to player ' + requestobj.listenTarget)
                 }
             } else if (curUser) {
@@ -235,7 +235,7 @@ io.on('connection', function(socket){
                     j++
                 }
                 gameStatus[shuffleObj.room].playerList[j].card = cardList[i]
-                gameStatus[shuffleObj.room].playerList[j].blinkTo = undefined
+                gameStatus[shuffleObj.room].playerList[j].winkTo = undefined
                 gameStatus[shuffleObj.room].playerList[j].listenTo = []
                 io.to(gameStatus[shuffleObj.room].playerList[j].id).emit('cardassigned', cardList[i])
                 io.to(shuffleObj.room).emit('gamenumber', gameStatus[shuffleObj.room].cardShuffleSequence)
@@ -248,11 +248,11 @@ io.on('connection', function(socket){
     })
 })
 
-function resolveBlinks (whoBlinked, blinkTarget) {
+function resolveWinks (whoWinked, winkTarget) {
     let linked = false
-    if (whoBlinked.blinkTo === blinkTarget.order && blinkTarget.listenTo && blinkTarget.listenTo.includes(whoBlinked.order)) {
-        io.to(whoBlinked.id).emit('blinksuccess', blinkTarget.order)
-        io.to(blinkTarget.id).emit('listensuccess', whoBlinked.order)
+    if (whoWinked.winkTo === winkTarget.order && winkTarget.listenTo && winkTarget.listenTo.includes(whoWinked.order)) {
+        io.to(whoWinked.id).emit('winksuccess', winkTarget.order)
+        io.to(winkTarget.id).emit('listensuccess', whoWinked.order)
         linked = true
     }
     return linked
