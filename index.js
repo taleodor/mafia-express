@@ -81,6 +81,8 @@ io.on('connection', function(socket){
                 order: updUser.order
             }
             io.to(orderobj.room).emit('orderchanged', updObj)
+            // re-order players based on new order
+            gameStatus[orderobj.room].playerList = constructPlayerOrder(gameStatus[orderobj.room].playerList, false)
             sendPlayerList(orderobj.room)
         } else {
             io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
@@ -91,54 +93,9 @@ io.on('connection', function(socket){
         // verify that user is admin
         let curUser = gameStatus[room].playerList.find(p => (p.id === socket.id))
         if (curUser && curUser.admin && gameStatus[room].playerList.length) {
-            // construct player list for shuffle without host and guest
-            let playerListForShuffle = []
-            let host = undefined
-            let guests = []
-
-            for (let i=0; i <  gameStatus[room].playerList.length; i++) {
-                if (gameStatus[room].playerList[i].order === "Host" && !host) {
-                    host = gameStatus[room].playerList[i]
-                } else if (gameStatus[room].playerList[i].order === "Host" && host) {
-                    // can't have more than 1 host so make them guest
-                    gameStatus[room].playerList[i].order = "Guest"
-                    guests.push(gameStatus[room].playerList[i])
-                } else if (gameStatus[room].playerList[i].order === "Guest") {
-                    guests.push(gameStatus[room].playerList[i])
-                } else {
-                    playerListForShuffle.push(gameStatus[room].playerList[i])
-                }
-            }
-
-            console.log(playerListForShuffle)
-
-            // construct order list by the number of players
-            let orderList = [...Array(playerListForShuffle.length).keys()]
-            orderList.shift()
-            orderList.push(playerListForShuffle.length)
-            // shuffle order list
-            shuffle(orderList)
-            console.log('shuffled order list, new list = ' + orderList)
-            
-            // assign new orders to players
-            for (let i=0; i < orderList.length; i++) {
-                playerListForShuffle[i].order = orderList[i]
-            }
-            // sort playerList by order
-            playerListForShuffle = playerListForShuffle.sort((a,b) => {
-                return a.order - b.order
-            })
-            // update actual game status
-            let actualPlayerList = []
-            if (host) {
-                actualPlayerList.push(host)
-            }
-            console.log(playerListForShuffle)
-            actualPlayerList = actualPlayerList.concat(playerListForShuffle)
-            actualPlayerList = actualPlayerList.concat(guests)
-            gameStatus[room].playerList = actualPlayerList
+            gameStatus[room].playerList = constructPlayerOrder(gameStatus[room].playerList, true)
             console.log('actualPlayerList')
-            console.log(actualPlayerList)
+            console.log(gameStatus[room].playerList)
             saveGameStatusOnRedis()
             io.to(room).emit('ordershuffled')
             sendPlayerList(room)
@@ -280,6 +237,57 @@ io.on('connection', function(socket){
         }
     })
 })
+
+// constructs player order, and if shuffle is true does the shuffle
+function constructPlayerOrder (playerList, shuffleOrder) {
+    let playerListForShuffle = []
+    let host = undefined
+    let guests = []
+
+    for (let i=0; i < playerList.length; i++) {
+        if (playerList[i].order === "Host" && !host) {
+            host = playerList[i]
+        } else if (playerList[i].order === "Host" && host) {
+            // can't have more than 1 host so make them guest
+            playerList[i].order = "Guest"
+            guests.push(playerList[i])
+        } else if (playerList[i].order === "Guest") {
+            guests.push(playerList[i])
+        } else {
+            playerListForShuffle.push(playerList[i])
+        }
+    }
+
+    console.log(playerListForShuffle)
+
+    if (shuffleOrder) {
+        // construct order list by the number of players
+        let orderList = [...Array(playerListForShuffle.length).keys()]
+        orderList.shift()
+        orderList.push(playerListForShuffle.length)
+        // shuffle order list
+        shuffle(orderList)
+        console.log('shuffled order list, new list = ' + orderList)
+        // assign new orders to players
+        for (let i=0; i < orderList.length; i++) {
+            playerListForShuffle[i].order = orderList[i]
+        }
+    }
+    
+    // sort playerList by order
+    playerListForShuffle = playerListForShuffle.sort((a,b) => {
+        return a.order - b.order
+    })
+    // update actual game status
+    let actualPlayerList = []
+    if (host) {
+        actualPlayerList.push(host)
+    }
+    console.log(playerListForShuffle)
+    actualPlayerList = actualPlayerList.concat(playerListForShuffle)
+    actualPlayerList = actualPlayerList.concat(guests)
+    return actualPlayerList
+}
 
 function resolveWinks (whoWinked, winkTarget) {
     let linked = false
