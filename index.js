@@ -8,6 +8,8 @@ const redisClient = redis.createClient(
         port: 6379
     }
 );
+const maxWinkListeners = 4;
+const maxPlayersToWink = 3;
 
 // add timestamps in front of log messages
 require('console-stamp')(console, 'yyyy-mm-dd HH:MM:ss.l');
@@ -161,13 +163,25 @@ io.on('connection', function(socket){
         if (gameStatus[requestobj.room]) {
             let curUser = gameStatus[requestobj.room].playerList.find(p => (p.id === socket.id))
             if (curUser && !curUser.winkTo) {
-                curUser.winkTo = requestobj.winkTarget
+                curUser.winkTo = [requestobj.winkTarget]
                 let winkTargetPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.winkTarget))
                 if (!resolveWinks(curUser, winkTargetPlayer)) {
                     io.to(socket.id).emit('adminmsg', 'You winked to player ' + requestobj.winkTarget)
+                } else {
+                    io.to(socket.id).emit('adminmsg', 'Player ' + requestobj.winkTarget + ' saw you winking!')
+                    io.to(winkTargetPlayer.id).emit('adminmsg', 'Player ' + curUser.order + ' winked to you!')
                 }
-            } else if (curUser.winkTo) {
-                io.to(socket.id).emit('adminmsg', 'You can only wink once per game!')
+            } else if (curUser && curUser.winkTo && curUser.winkTo.length < maxPlayersToWink) {
+                curUser.winkTo.push(requestobj.winkTarget)
+                let winkTargetPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.winkTarget))
+                if (!resolveWinks(curUser, winkTargetPlayer)) {
+                    io.to(socket.id).emit('adminmsg', 'You winked to player ' + requestobj.winkTarget)
+                } else {
+                    io.to(socket.id).emit('adminmsg', 'Player ' + requestobj.winkTarget + ' saw you winking!')
+                    io.to(winkTargetPlayer.id).emit('adminmsg', 'Player ' + curUser.order + ' winked to you!')
+                }
+            } else if (curUser) {
+                io.to(socket.id).emit('adminmsg', 'You can wink no more than ' + maxPlayersToWink + ' times per game!')
             }
         }
     })
@@ -177,18 +191,24 @@ io.on('connection', function(socket){
             let curUser = gameStatus[requestobj.room].playerList.find(p => (p.id === socket.id))
             if (curUser && !curUser.listenTo) {
                 curUser.listenTo = [requestobj.listenTarget]
-                listenPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.listenTarget))
+                let listenPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.listenTarget))
                 if (!resolveWinks(listenPlayer, curUser)) {
                     io.to(socket.id).emit('adminmsg', 'You are now listening to player ' + requestobj.listenTarget)
+                } else {
+                    io.to(socket.id).emit('adminmsg', 'Player ' + requestobj.listenTarget + ' winked to you!')
+                    io.to(listenPlayer.id).emit('adminmsg', 'Player ' + curUser.order + ' saw you winking!')
                 }
-            } else if (curUser && curUser.listenTo.length < 3) {
+            } else if (curUser && curUser.listenTo.length < maxWinkListeners) {
                 curUser.listenTo.push(requestobj.listenTarget)
-                listenPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.listenTarget))
+                let listenPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.listenTarget))
                 if (!resolveWinks(listenPlayer, curUser)) {
                     io.to(socket.id).emit('adminmsg', 'You are now listening to player ' + requestobj.listenTarget)
+                } else {
+                    io.to(socket.id).emit('adminmsg', 'Player ' + requestobj.listenTarget + ' winked to you!')
+                    io.to(listenPlayer.id).emit('adminmsg', 'Player ' + curUser.order + ' saw you winking!')
                 }
             } else if (curUser) {
-                io.to(socket.id).emit('adminmsg', 'You can listen to max 3 players per game!')
+                io.to(socket.id).emit('adminmsg', 'You can listen to max ' + maxWinkListeners + ' players per game!')
             }
         }
     })
@@ -235,7 +255,7 @@ io.on('connection', function(socket){
                     j++
                 }
                 gameStatus[shuffleObj.room].playerList[j].card = cardList[i]
-                gameStatus[shuffleObj.room].playerList[j].winkTo = undefined
+                gameStatus[shuffleObj.room].playerList[j].winkTo = []
                 gameStatus[shuffleObj.room].playerList[j].listenTo = []
                 io.to(gameStatus[shuffleObj.room].playerList[j].id).emit('cardassigned', cardList[i])
                 io.to(shuffleObj.room).emit('gamenumber', gameStatus[shuffleObj.room].cardShuffleSequence)
@@ -250,7 +270,7 @@ io.on('connection', function(socket){
 
 function resolveWinks (whoWinked, winkTarget) {
     let linked = false
-    if (whoWinked.winkTo === winkTarget.order && winkTarget.listenTo && winkTarget.listenTo.includes(whoWinked.order)) {
+    if (whoWinked.winkTo && whoWinked.winkTo.includes(winkTarget.order) && winkTarget.listenTo && winkTarget.listenTo.includes(whoWinked.order)) {
         io.to(whoWinked.id).emit('winksuccess', winkTarget.order)
         io.to(winkTarget.id).emit('listensuccess', whoWinked.order)
         linked = true
