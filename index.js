@@ -157,13 +157,13 @@ io.on('connection', function(socket){
             }
             io.to(socket.id).emit('yourplayer', sendObj)
             // resolve any outstanding winks
-            if (sendObj.winkTo) {
+            if (sendObj && sendObj.winkTo) {
                 sendObj.winkTo.forEach(playerOrder => {
                     let listenTarget = gameStatus[requestobj.room].playerList.find(p => (p.order === playerOrder))
                     resolveWinks(sendObj, listenTarget)
                 })
             }
-            if (sendObj.listenTo) {
+            if (sendObj && sendObj.listenTo) {
                 sendObj.listenTo.forEach(playerOrder => {
                     let winkSource = gameStatus[requestobj.room].playerList.find(p => (p.order === playerOrder))
                     resolveWinks(winkSource, sendObj)
