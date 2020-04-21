@@ -291,7 +291,7 @@ function constructPlayerOrder (playerList, shuffleOrder) {
 
 function resolveWinks (whoWinked, winkTarget) {
     let linked = false
-    if (whoWinked.winkTo && whoWinked.winkTo.includes(winkTarget.order) && winkTarget.listenTo && winkTarget.listenTo.includes(whoWinked.order)) {
+    if (whoWinked && winkTarget && whoWinked.winkTo && whoWinked.winkTo.includes(winkTarget.order) && winkTarget.listenTo && winkTarget.listenTo.includes(whoWinked.order)) {
         io.to(whoWinked.id).emit('winksuccess', winkTarget.order)
         io.to(winkTarget.id).emit('listensuccess', whoWinked.order)
         linked = true
