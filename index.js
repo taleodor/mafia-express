@@ -269,8 +269,10 @@ function constructPlayerOrder (playerList, shuffleOrder) {
         shuffle(orderList)
         console.log('shuffled order list, new list = ' + orderList)
         // assign new orders to players
-        for (let i=0; i < orderList.length; i++) {
-            playerListForShuffle[i].order = orderList[i]
+        if (orderList && orderList.length) {
+            for (let i=0; i < orderList.length; i++) {
+                playerListForShuffle[i].order = orderList[i]
+            }
         }
     }
     
