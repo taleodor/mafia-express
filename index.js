@@ -25,6 +25,11 @@ redisClient.get('mafiaGameState', (err, reply) => {
     }
 })
 
+// app.get('/shuffleTest', function(req, res){
+//     shuffleTest()
+//     res.send('<h1>Hello world</h1>');
+// });
+
 app.get('/api', function(req, res){
     res.send('<h1>Hello world</h1>');
 });
@@ -345,6 +350,28 @@ function shuffle(a) {
         [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
+}
+
+function shuffleTest () {
+    let players = []
+    let playerObj = {
+        villager: 0,
+        sheriff: 0,
+        godfather: 0,
+        mafia: 0
+    }
+    for (let i=0; i<10; i++) {
+        players.push(Object.assign({}, playerObj))
+    }
+    let cards = ['villager', 'villager', 'villager', 'villager', 'villager', 'villager', 'sheriff', 'godfather', 'mafia', 'mafia']
+    for (let i=0; i<10000; i++) {
+        let shuffleRes = shuffle(cards.slice())
+        for (let j=0; j<shuffleRes.length; j++) {
+            players[j][shuffleRes[j]]++
+        }
+        // cards = shuffleRes
+    }
+    console.log(players)
 }
 
 function saveGameStatusOnRedis () {
