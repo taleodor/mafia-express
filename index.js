@@ -127,7 +127,7 @@ io.on('connection', function(socket){
                 })
             }
             // if player is host, send all info for other players for the game
-            if (sendObj.order === 'Host') {
+            if (sendObj && sendObj.order === 'Host') {
                 let hostGameObj = {}
                 gameStatus[requestobj.room].playerList.forEach(pl => {
                     if (pl.order !== 'Host' && pl.order !== 'Guest' && pl.card) {
