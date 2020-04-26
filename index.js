@@ -126,6 +126,16 @@ io.on('connection', function(socket){
                     resolveWinks(winkSource, sendObj)
                 })
             }
+            // if player is host, send all info for other players for the game
+            if (sendObj.order === 'Host') {
+                let hostGameObj = {}
+                gameStatus[requestobj.room].playerList.forEach(pl => {
+                    if (pl.order !== 'Host' && pl.order !== 'Guest' && pl.card) {
+                        hostGameObj[pl.order] = pl.card
+                    }
+                })
+                io.to(socket.id).emit('gameset', hostGameObj)
+            }
         }
     })
 
@@ -219,6 +229,7 @@ io.on('connection', function(socket){
             gameStatus[shuffleObj.room].cardShuffleSequence += 1
 
             // assign cards to players
+            let hostGameObj = {}
             for (let i=0, j=0; i < cardList.length && j < gameStatus[shuffleObj.room].playerList.length; i++, j++) {
                 while (j < gameStatus[shuffleObj.room].playerList.length && (gameStatus[shuffleObj.room].playerList[j].order === 'Guest'
                 || gameStatus[shuffleObj.room].playerList[j].order === 'Host')) {
@@ -228,10 +239,16 @@ io.on('connection', function(socket){
                 gameStatus[shuffleObj.room].playerList[j].winkTo = []
                 gameStatus[shuffleObj.room].playerList[j].listenTo = []
                 io.to(gameStatus[shuffleObj.room].playerList[j].id).emit('cardassigned', cardList[i])
+                hostGameObj[gameStatus[shuffleObj.room].playerList[j].order] = gameStatus[shuffleObj.room].playerList[j].card
                 io.to(shuffleObj.room).emit('gamenumber', gameStatus[shuffleObj.room].cardShuffleSequence)
             }
             saveGameStatusOnRedis()
             console.log(gameStatus[shuffleObj.room])
+            // send player data to host if present
+            let host = gameStatus[shuffleObj.room].playerList.find(p => (p.order === 'Host'))
+            if (host) {
+                io.to(host.id).emit('gameset', hostGameObj)
+            }
         } else {
             io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
         }
