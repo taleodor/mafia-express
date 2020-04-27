@@ -183,7 +183,7 @@ io.on('connection', function(socket){
                     io.to(socket.id).emit('adminmsg', 'Player ' + requestobj.listenTarget + ' winked to you!')
                     io.to(listenPlayer.id).emit('adminmsg', 'Player ' + curUser.order + ' saw you winking!')
                 }
-            } else if (curUser && curUser.listenTo.length < maxWinkListeners) {
+            } else if (curUser && curUser.listenTo.length < maxWinkListeners && !curUser.listenTo.includes(requestobj.listenTarget)) {
                 curUser.listenTo.push(requestobj.listenTarget)
                 let listenPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.listenTarget))
                 if (!resolveWinks(listenPlayer, curUser)) {
@@ -192,6 +192,8 @@ io.on('connection', function(socket){
                     io.to(socket.id).emit('adminmsg', 'Player ' + requestobj.listenTarget + ' winked to you!')
                     io.to(listenPlayer.id).emit('adminmsg', 'Player ' + curUser.order + ' saw you winking!')
                 }
+            } else if (curUser && curUser.listenTo.includes(requestobj.listenTarget)) {
+                io.to(socket.id).emit('adminmsg', 'You were already listening to the player #' + requestobj.listenTarget + '!')
             } else if (curUser) {
                 io.to(socket.id).emit('adminmsg', 'You can listen to max ' + maxWinkListeners + ' players per game!')
             }
