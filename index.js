@@ -297,7 +297,9 @@ function constructPlayerOrder (playerList, shuffleOrder) {
         // assign new orders to players
         if (orderList && orderList.length) {
             for (let i=0; i < orderList.length; i++) {
-                playerListForShuffle[i].order = orderList[i]
+                if (playerListForShuffle[i]) {
+                    playerListForShuffle[i].order = orderList[i]
+                }
             }
         }
     }
