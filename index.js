@@ -156,7 +156,7 @@ io.on('connection', function(socket){
                     io.to(socket.id).emit('adminmsg', 'Player ' + requestobj.winkTarget + ' saw you winking!')
                     io.to(winkTargetPlayer.id).emit('adminmsg', 'Player ' + curUser.order + ' winked to you!')
                 }
-            } else if (curUser && curUser.winkTo && curUser.winkTo.length < maxPlayersToWink) {
+            } else if (curUser && curUser.winkTo && curUser.winkTo.length < maxPlayersToWink && !curUser.winkTo.includes(requestobj.winkTarget)) {
                 curUser.winkTo.push(requestobj.winkTarget)
                 let winkTargetPlayer = gameStatus[requestobj.room].playerList.find(p => (p.order === requestobj.winkTarget))
                 if (!resolveWinks(curUser, winkTargetPlayer)) {
@@ -165,6 +165,8 @@ io.on('connection', function(socket){
                     io.to(socket.id).emit('adminmsg', 'Player ' + requestobj.winkTarget + ' saw you winking!')
                     io.to(winkTargetPlayer.id).emit('adminmsg', 'Player ' + curUser.order + ' winked to you!')
                 }
+            } else if (curUser && curUser.winkTo.includes(requestobj.winkTarget)) {
+                io.to(socket.id).emit('adminmsg', 'You have already winked to the player #' + requestobj.winkTarget + '!')
             } else if (curUser) {
                 io.to(socket.id).emit('adminmsg', 'You can wink no more than ' + maxPlayersToWink + ' times per game!')
             }
