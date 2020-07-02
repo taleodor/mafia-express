@@ -8,7 +8,7 @@ const redisClient = redis.createClient(
         port: 6379
     }
 );
-const maxWinkListeners = 4;
+const maxWinkListeners = 6;
 const maxPlayersToWink = 3;
 
 // add timestamps in front of log messages
