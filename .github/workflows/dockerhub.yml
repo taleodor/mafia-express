@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Login to Docker Registry
-        run: echo ${{ secrets.DOCKER_TOKEN }} | docker login $REGISTRY_URL -u ${{ secrets.DOCKER_LOGIN }} --password-stdin
+        run: echo '${{ secrets.DOCKER_TOKEN }}' | docker login $REGISTRY_URL -u '${{ secrets.DOCKER_LOGIN }}' --password-stdin
       - name: Get Version
         run: |
           reliza_ver=$(docker run --rm relizaio/reliza-cli getversion -u ${{ secrets.RELIZA_HUB_URL }} -k ${{ secrets.RELIZA_API_KEY }} -i ${{ secrets.RELIZA_API_ID }} -b $GITHUB_REF --metadata GitHub)
