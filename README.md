@@ -4,6 +4,6 @@ This is a back-end Node.js Express project for Mafia Card Shuffle (simple card a
 
 For details on deployment, please refer to [mafia deployment project](https://github.com/taleodor/mafia-deployment).
 
+## Other
 
-# Other
 Any contributions are welcome!
