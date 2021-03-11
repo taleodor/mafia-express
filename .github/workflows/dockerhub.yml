@@ -43,6 +43,8 @@ jobs:
           # save sha256 to env var
           echo "DOCKER_SHA_256=$docker_sha_256" >> $GITHUB_ENV
           echo "--status completed " > reliza_command
+          echo "check docker_sha_256 = " $docker_sha_256
+          echo "check DOCKER_SHA_256 = " $DOCKER_SHA_256
       - name: Submit metadata to Reliza Hub
         run: |
           echo -n "-b $GITHUB_REF --vcstype git --commit $GITHUB_SHA -u ${{ secrets.RELIZA_HUB_URL }} -k ${{ secrets.RELIZA_API_KEY }} \
