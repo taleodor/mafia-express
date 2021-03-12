@@ -49,7 +49,7 @@ jobs:
             -i ${{ secrets.RELIZA_API_ID }} --vcsuri github.com/$GITHUB_REPOSITORY \
             --date $(git log -1 --date=iso-strict --pretty='%ad') \
             -v $RLZ_FULL_VER " >> reliza_command
-          echo -n "--artid $IMAGE_NAMESPACE/$IMAGE_NAME " >> reliza_command
+          echo -n "--artid $REGISTRY_URL/$IMAGE_NAMESPACE/$IMAGE_NAME " >> reliza_command
           echo -n "--artbuildid github$GITHUB_ACTION$GITHUB_SHA " >> reliza_command
           echo -n "--artcimeta GitHub Actions " >> reliza_command
           echo -n "--arttype Docker " >> reliza_command
