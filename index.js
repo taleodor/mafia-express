@@ -43,8 +43,6 @@ io.on('connection', function(socket){
         data.id = socket.id
         updateGameStatus(data, socket)
         sendPlayerList(data.room)
-        
-        // console.log(gameStatus)
     });
 
     socket.on('kickplayer', kickobj => {
@@ -99,12 +97,10 @@ io.on('connection', function(socket){
         let curUser = gameStatus[room].playerList.find(p => (p.id === socket.id))
         if (curUser && curUser.admin && gameStatus[room].playerList.length) {
             gameStatus[room].playerList = constructPlayerOrder(gameStatus[room].playerList, true)
-            console.log('actualPlayerList')
-            console.log(gameStatus[room].playerList)
             saveGameStatusOnRedis()
             io.to(room).emit('ordershuffled')
             sendPlayerList(room)
-            console.log(gameStatus[room])
+            console.log("Shuffled order, room = " + room)
         } else {
             io.to(socket.id).emit('adminmsg', 'Please close this tab and use another browser tab from which you are also logged in to this room!')
         }
@@ -232,7 +228,7 @@ io.on('connection', function(socket){
             })
             // shuffle card list
             shuffle(cardList)
-            console.log(cardList)
+            console.log("Shuffled cards, room = " + shuffleObj.room)
 
             // increment shffle sequence
             gameStatus[shuffleObj.room].cardShuffleSequence += 1
@@ -252,7 +248,6 @@ io.on('connection', function(socket){
                 io.to(shuffleObj.room).emit('gamenumber', gameStatus[shuffleObj.room].cardShuffleSequence)
             }
             saveGameStatusOnRedis()
-            console.log(gameStatus[shuffleObj.room])
             // send player data to host if present
             let host = gameStatus[shuffleObj.room].playerList.find(p => (p.order === 'Host'))
             if (host) {
@@ -284,8 +279,6 @@ function constructPlayerOrder (playerList, shuffleOrder) {
         }
     }
 
-    console.log(playerListForShuffle)
-
     if (shuffleOrder) {
         // construct order list by the number of players
         let orderList = [...Array(playerListForShuffle.length).keys()]
@@ -313,7 +306,6 @@ function constructPlayerOrder (playerList, shuffleOrder) {
     if (host) {
         actualPlayerList.push(host)
     }
-    console.log(playerListForShuffle)
     actualPlayerList = actualPlayerList.concat(playerListForShuffle)
     actualPlayerList = actualPlayerList.concat(guests)
     return actualPlayerList
