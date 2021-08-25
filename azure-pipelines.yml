@@ -13,10 +13,10 @@ variables:
   vmImageName: 'ubuntu-latest'
 
 stages:
-- stage: Test Hello World
+- stage: Test1
   displayName: Test Hello World
   jobs:
-  - job: Test Hello World
+  - job: Test1
     displayName: Test Hello World
     pool:
       vmImage: $(vmImageName)
