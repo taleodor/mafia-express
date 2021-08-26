@@ -9,17 +9,62 @@ resources:
 - repo: self
 
 variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: '88a9d49b-efbf-436e-9d1b-bd82e7c46442'
+  imageRepository: 'mafiaexpress'
+  containerRegistry: 'reliza.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+
   # Agent VM image name
   vmImageName: 'ubuntu-latest'
 
 stages:
-- stage: Test1
-  displayName: Test Hello World
+- stage: Build
+  displayName: Build and push stage
   jobs:
-  - job: Test1
-    displayName: Test Hello World
+  - job: Build
+    displayName: Build
     pool:
       vmImage: $(vmImageName)
     steps:
     # Record build start
-    - script: echo "Hello World"
+    - script: |
+      BUILD_START=$(date -Iseconds)
+      echo "##vso[task.setvariable variable=BUILD_START]$BUILD_START"
+    # Checkout current repository
+    - checkout: self
+    # Get Version From Reliza Hub | Extract Last Release Commit And Prepare List Of Commits
+    - script: |
+        docker pull relizaio/jq
+        mkdir -p $(Pipeline.Workspace)/variables
+        # extract last release commit and prepare list of commits
+        last_commit=$(docker run --rm relizaio/reliza-cli getlatestrelease -k $RELIZA_API_KEY -i $RELIZA_API_KEY_ID --branch $CIRCLE_BRANCH | jq -r ".sourceCodeEntryDetails.commit")
+        if [ ! -z "$last_commit" ]
+        then
+          echo -n "--commits $(git log $last_commit..$CIRCLE_SHA1 --date=iso-strict --pretty='%H|||%ad|||%s' | base64 -w 0) " > $(Pipeline.Workspace)/variables/GET_VERSION
+        fi
+        echo "Getting version from Reliza Hub"
+        echo -n "-k $RELIZA_API_KEY -i $RELIZA_API_KEY_ID -b $CIRCLE_BRANCH --metadata circleci$CIRCLE_BUILD_NUM \
+          --commit $CIRCLE_SHA1 --commitmessage \"$(git log -1 --pretty='%s')\" --date $(git log -1 --date=iso-strict --pretty='%ad') --vcstype git " >> $(Pipeline.Workspace)/variables/GET_VERSION
+        # debug
+        echo "DEBUG GET VERSION COMMAND: $(cat $(Pipeline.Workspace)/variables/GET_VERSION)"
+        # get version
+        echo -n "docker run --rm relizaio/reliza-cli getversion $(cat $(Pipeline.Workspace)/variables/GET_VERSION) " > $(Pipeline.Workspace)/variables/GET_VERSION_EXEC
+        reliza_ver=$(eval "$(cat $(Pipeline.Workspace)/variables/GET_VERSION_EXEC)")
+        full_ver=$(echo $reliza_ver | jq -r ".version")
+        echo "extracted full version: $full_ver"
+        short_ver=$(echo $reliza_ver | jq -r ".dockerTagSafeVersion")
+        echo "extracted docker tag safe version: $short_ver"
+        echo "export RLZ_FULL_VER=$full_ver" >> $BASH_ENV
+        echo "export RLZ_SHORT_VER=$short_ver" >> $BASH_ENV
+        source $BASH_ENV
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
