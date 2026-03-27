@@ -1,6 +1,6 @@
 const app = require('express')();
 const http = require('http').createServer(app);
-const io  = require('socket.io')(http, { path: '/api'});
+const io  = require('socket.io')(http, { path: '/api', allowEIO3: true});
 const redis = require('redis');
 const redisClient = redis.createClient({
     url: `redis://${process.env.REDIS_HOST || '127.0.0.1'}:6379`
