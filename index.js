@@ -2,12 +2,9 @@ const app = require('express')();
 const http = require('http').createServer(app);
 const io  = require('socket.io')(http, { path: '/api'});
 const redis = require('redis');
-const redisClient = redis.createClient( 
-    {
-        host: process.env.REDIS_HOST ? process.env.REDIS_HOST : '127.0.0.1',
-        port: 6379
-    }
-);
+const redisClient = redis.createClient({
+    url: `redis://${process.env.REDIS_HOST || '127.0.0.1'}:6379`
+});
 const maxWinkListeners = 6;
 const maxPlayersToWink = 3;
 
@@ -19,10 +16,14 @@ redisClient.on("error", function(error) {
 });
 
 var gameStatus = {}
-redisClient.get('mafiaGameState', (err, reply) => {
-    if (!err && reply) {
+redisClient.connect().then(() => {
+    return redisClient.get('mafiaGameState')
+}).then(reply => {
+    if (reply) {
         gameStatus = JSON.parse(reply)
     }
+}).catch(err => {
+    console.error('Redis init error:', err)
 })
 
 // app.get('/shuffleTest', function(req, res){
@@ -373,7 +374,9 @@ function shuffleTest () {
 }
 
 function saveGameStatusOnRedis () {
-    redisClient.set('mafiaGameState', JSON.stringify(gameStatus))
+    redisClient.set('mafiaGameState', JSON.stringify(gameStatus)).catch(err => {
+        console.error('Redis save error:', err)
+    })
 }
 
 function updateGameStatus (player, socket) {

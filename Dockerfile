@@ -7,7 +7,7 @@ RUN mkdir /app
 RUN echo "version=$VERSION" > /app/version && echo "commit=$GIT_COMMIT" >> /app/version && echo "branch=$GIT_BRANCH" >> /app/version
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci --ignore-scripts
 COPY ./ .
 
 LABEL git_commit $GIT_COMMIT
